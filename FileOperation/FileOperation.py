@@ -10,7 +10,7 @@ class FileOperation:
         file_path (str): Path to the CSV file.
 
         Returns:
-        DataFrame: Data read from the CSV file.
+        DataFrame: Data read from the CSV file, or None if the file is not found or an error occurs.
         """
         try:
             data = pd.read_csv(file_path)
@@ -21,7 +21,6 @@ class FileOperation:
         except Exception as e:
             print(f"An error occurred while reading the CSV file: {e}")
             return None
-
     def save_to_csv(self, data, file_name: str):
         """
         Save the provided data to a new CSV file with the given file name.

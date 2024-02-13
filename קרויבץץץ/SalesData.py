@@ -158,7 +158,7 @@ class SalesData:
 
         return analysis_results
 
-    #11
+#11
     def calculate_cumulative_sales(self):
         """
         Calculate the cumulative sum of sales for each product across months.

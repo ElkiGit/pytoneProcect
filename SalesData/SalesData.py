@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 
@@ -7,14 +8,14 @@ import seaborn as sns
 class SalesData:
     def __init__(self, data):
         self.data = data
-
+#4
     def eliminate_duplicates(self):
         """
         Eliminate duplicate rows in the dataset to ensure data integrity and consistency.
         """
         if self.data is not None:
             self.data = self.data.drop_duplicates().dropna()
-
+#5
     def calculate_total_sales(self):
         """
         Calculate the total sales for each product.
@@ -22,9 +23,9 @@ class SalesData:
         Returns:
         DataFrame: DataFrame with total sales for each product.
         """
-        total_sales = self.data.groupby('Product')['Sales'].sum().reset_index()
-        return total_sales
+        self.data['Total Sales'] = self.data['Quantity'] * self.data['Price']
 
+#6
     def _calculate_total_sales_per_month(self):
         """
         Calculate the total sales for each month.
@@ -32,10 +33,14 @@ class SalesData:
         Returns:
         DataFrame: DataFrame with total sales for each month.
         """
-        self.data['Month'] = pd.to_datetime(self.data['Date']).dt.month
-        total_sales_per_month = self.data.groupby('Month')['Sales'].sum().reset_index()
-        return total_sales_per_month
+        if 'Total Sales' not in self.data.columns:
+            self.calculate_total_sales()
+        self.data['Date'] = pd.to_datetime(self.data['Date'], dayfirst=True, errors='coerce')
+        self.data['Month'] = self.data['Date'].dt.month
+        total_sales_per_month= self.data.groupby('Month')['Total Sales'].sum()
 
+        return total_sales_per_month
+#7
     def _identify_best_selling_product(self):
         """
         Identify the best-selling product.
@@ -43,9 +48,11 @@ class SalesData:
         Returns:
         str: Best-selling product.
         """
-        best_selling_product = self.data.groupby('Product')['Sales'].sum().idxmax()
+        if 'Total Sales' not in self.data.columns:
+            self.calculate_total_sales()
+        best_selling_product = self.data.groupby('Product')['Total Sales'].sum().idxmax()
         return best_selling_product
-
+#8
     def _identify_month_with_highest_sales(self):
         """
         Identify the month with the highest total sales.
@@ -53,10 +60,10 @@ class SalesData:
         Returns:
         int: Month with the highest total sales.
         """
-        total_sales_per_month = self._calculate_total_sales_per_month()
-        month_with_highest_sales = total_sales_per_month['Month'].iloc[total_sales_per_month['Sales'].idxmax()]
+        monthly_sales = self._calculate_total_sales_per_month()
+        month_with_highest_sales = monthly_sales.idxmax()
         return month_with_highest_sales
-
+#9
     def analyze_sales_data(self):
         """
         Perform the analysis using the previously defined private methods and return a dictionary.
@@ -70,17 +77,19 @@ class SalesData:
         analysis_results['month_with_highest_sales'] = self._identify_month_with_highest_sales()
 
         return analysis_results
-
+#10
     def add_to_dict(self, analysis_results):
         # Calculate additional values
-        minimest_selling_product = self.data.groupby('Product')['Sales'].sum().idxmin()
-        average_sales = self.data['Sales'].mean()
+        if 'Total Sales' not in self.data.columns:
+            self.calculate_total_sales()
+        minimest_selling_product = self.data.groupby('Product')['Total Sales'].sum().idxmin()
+        average_sales = self.data['Total Sales'].mean()
 
         analysis_results['minimest_selling_product'] = minimest_selling_product
         analysis_results['average_sales'] = average_sales
 
         return  analysis_results
-
+#11
     def calculate_cumulative_sales(self):
         """
         Calculate the cumulative sum of sales for each product across months.
@@ -88,8 +97,14 @@ class SalesData:
         Returns:
         DataFrame: DataFrame with cumulative sales for each product.
         """
-        cumulative_sales = self.data.groupby('Product')['Sales'].cumsum()
-        self.data['CumulativeSales'] = cumulative_sales
+        if 'Total Sales' not in self.data.columns:
+            self.calculate_total_sales()
+        if 'Month' not in self.data.columns:
+            self.data['Date'] = pd.to_datetime(self.data['Date'], dayfirst=True, errors='coerce')
+            self.data['Month'] = self.data['Date'].dt.month
+        self.data['CumulativeSales'] = self.data.groupby(['Product', 'Month'])['Total Sales'].cumsum()
+#12
+
 
     def add_90_percent_values_column(self):
         """
@@ -98,42 +113,47 @@ class SalesData:
         if 'Quantity' in self.data.columns:
             quantile_90 = self.data['Quantity'].quantile(0.9)
             self.data['90%_Values'] = np.where(self.data['Quantity'] > quantile_90, 1, 0)
-
+#13
     def bar_chart_category_sum(self):
         """
         Plot a bar chart to represent the sum of quantities sold for each product.
         """
-        sns.barplot(x='Product', y='Quantity', data=self.data, estimator=sum)
+        category_sum = self.data.groupby('Product')['Quantity'].sum()
+        category_sum.plot(kind='bar', title='Sum of Quantities Sold for Each Product')
+        plt.xlabel('Product')
+        plt.ylabel('Sum of Quantities Sold')
+        plt.show()
 
+#14
     def calculate_mean_quantity(self):
         """
         Calculate the mean, median, and second max for Total column using NumPy array manipulation.
 
         Returns:
-        dict: Dictionary containing mean, median, and second max values.
+        tuple: Tuple containing mean, median, and second max values.
         """
         mean = np.mean(self.data['Total'])
         median = np.median(self.data['Total'])
         sorted_totals = np.sort(self.data['Total'])
         second_max = sorted_totals[-2]
-        return {'mean': mean, 'median': median, 'second_max': second_max}
+        return mean, median, second_max
+#15
 
-    def filter_by_sellings_or_and(self):
-        """
-        Filter specific products by the following conditions:
-        1. If number of selling more than 5 or number of selling == 0.
-        2. If the price above 300 $ and sold less than 2 times.
-        """
-        filtered_data = self.data[(self.data['Selling'] > 5) | (self.data['Selling'] == 0) |
-                                  ((self.data['Price'] > 300) & (self.data['Selling'] < 2))]
+    def filter_by_sellings_or(self):
+        condition = (self.data['Quantity'] > 5) | (self.data['Quantity'] == 0)
+        filtered_data = self.data[condition]
         return filtered_data
-
+# 15
+    def filter_by_sellings_and(self):
+        condition = (self.data['Price'] > 300) & (self.data['Quantity'] < 2)
+        filtered_data = self.data[condition]
+        return filtered_data
+#16
     def divide_by_2(self):
         """
         Divide all values in the SalesData DataFrame by 2 for "BLACK FRIDAY". Column name will be "BlackFridayPrice".
         """
-        self.data['BlackFridayPrice'] = self.data['Price'] / 2
-
+        self.data['BlackFridayPrice'] = self.data['Price'].div(2)
     def calculate_stats(self, columns=None):
         """
         Find the maximum, sum, absolute values, and cumulative maximum of the SalesData DataFrame for all
@@ -149,14 +169,17 @@ class SalesData:
             columns = self.data.columns
 
         stats = {}
+
         for col in columns:
-            # Convert column to numeric type
-            self.data[col] = pd.to_numeric(self.data[col], errors='coerce')
-            col_data = self.data[col]
-            stats[col] = {
-                'maximum': col_data.max(),
-                'sum': col_data.sum(),
-                'absolute_values': col_data.apply(lambda x: pd.to_numeric(x, errors='coerce')).abs().sum(),
-                'cumulative_maximum': col_data.cummax().max()
-            }
+            if col in self.data.columns:
+                col_data = self.data[col]
+                if col_data.dtype.kind in 'biufc':
+                    col_stats = {
+                        'max': col_data.max(),
+                        'sum': col_data.sum(),
+                        'abs': col_data.abs().sum(),
+                        'cumulative_max': col_data.cummax()
+                    }
+                    stats[col] = col_stats
+
         return stats

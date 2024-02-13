@@ -5,7 +5,7 @@ if __name__ == '__main__':
     file_op = FileOperation()
 
     # Read data from a CSV file
-    data = file_op.read_csv("../YafeNof.csv")
+    data = file_op.read_csv("YafeNof.csv")
     if data is not None:
         print("Data read from CSV file:")
         print(data)
